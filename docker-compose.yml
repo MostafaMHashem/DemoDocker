@@ -1,33 +1,39 @@
-version: '3'
+version: '3.8'
 
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
+    volumes:
+      - ./public:/var/www/html/public
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
     ports:
       - "8000:80"
-    volumes:
-      - .:/var/www/html/DemoDocker
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:nWtcrYUKT3McZtkH2o0ZrmjPJXgQad/DqjysfNxhGL8=
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=DemoDocker
+      - DB_USERNAME=hashem
+      - DB_PASSWORD=password
     depends_on:
       - db
-    environment:
-      DB_HOST: db
-      DB_DATABASE: DemoDocker
-      DB_USERNAME: hashem
-      DB_PASSWORD: password
 
   db:
-    image: mysql:5.7
+    image: mysql:8.0
     ports:
       - "3307:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_PASSWORD:
       MYSQL_DATABASE: DemoDocker
       MYSQL_USER: hashem
       MYSQL_PASSWORD: password
     volumes:
-      - mysql_data:/var/lib/mysql
+      - db_data:/var/lib/mysql
 
 volumes:
-  mysql_data:
+  db_data:
