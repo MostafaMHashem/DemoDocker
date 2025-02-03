@@ -1,35 +1,44 @@
 FROM php:8.1-apache
 
+# Set working directory to the project folder
+WORKDIR /var/www/html/DemoDocker
+
 # Install dependencies
 RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libzip-dev \
+    libonig-dev \
+    libxml2-dev \
     libpng-dev \
     libjpeg-dev \
     libfreetype6-dev \
-    libonig-dev \
-    libzip-dev \
-    zip \
-    unzip \
-    curl
-
-# Enable PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
-
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
-
-# Set working directory
-WORKDIR /var/www/html
-
-# Copy project files
-COPY . /var/www/html
-
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 775 /var/www/html/storage \
-    && chmod -R 775 /var/www/html/bootstrap/cache
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd \
+    pdo pdo_mysql mysqli zip mbstring exif pcntl
 
 # Install Composer
-COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Copy application files
+COPY . .
+
+# Set permissions for Laravel storage and bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/DemoDocker/storage /var/www/html/DemoDocker/bootstrap/cache
+
+# Update Apache DocumentRoot to point to the Laravel public directory
+RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/DemoDocker/public|g' /etc/apache2/sites-available/000-default.conf
+
+# Add this to allow .htaccess overrides:
+RUN echo "<Directory /var/www/html/DemoDocker/public>" >> /etc/apache2/sites-available/000-default.conf
+RUN echo "    AllowOverride All" >> /etc/apache2/sites-available/000-default.conf
+RUN echo "</Directory>" >> /etc/apache2/sites-available/000-default.conf
+
+# Enable Apache rewrite module
+RUN a2enmod rewrite
 
 # Expose port 80
 EXPOSE 80
+
+# Start Apache
+CMD ["apache2-foreground"]
